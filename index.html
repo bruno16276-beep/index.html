@@ -2236,31 +2236,40 @@ async function login() {
   const email = document.getElementById('email').value
   const senha = document.getElementById('senha').value
 
-  const { data, error } = await supabaseClient
+  // 🔐 LOGIN REAL (SUPABASE AUTH)
+  const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+    email: email,
+    password: senha
+  })
+
+  if (authError) {
+    document.getElementById('status').innerText = "Email ou senha inválidos"
+    return
+  }
+
+  // 🔎 AGORA CONSULTA A TABELA (RLS PERMITE)
+  const { data: userData, error: userError } = await supabaseClient
     .from('usuarios')
     .select('*')
     .eq('email', email)
     .single()
 
-  if (error || !data) {
+  if (userError || !userData) {
     document.getElementById('status').innerText = "Usuário não encontrado"
     return
   }
 
-  if (data.senha !== senha) {
-    document.getElementById('status').innerText = "Senha incorreta"
+  if (!userData.ativo) {
+    document.getElementById('status').innerText = "Acesso desativado"
     return
   }
 
-  if (!data.ativo) {
+  if (userData.expira_em && new Date(userData.expira_em) < new Date()) {
     document.getElementById('status').innerText = "Acesso expirado"
     return
   }
 
+  // ✅ LIBERA SEU SISTEMA (mantém tudo igual)
   document.getElementById('login').style.display = 'none'
   document.getElementById('sistema').style.display = 'block'
 }
-</script>
-
-</body>
-</html>
